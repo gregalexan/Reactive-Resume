@@ -14,7 +14,7 @@ import {
   Input,
   Slider,
 } from "@reactive-resume/ui";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
@@ -32,6 +32,7 @@ export const SkillsDialog = () => {
   });
 
   const [pendingKeyword, setPendingKeyword] = useState("");
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   return (
     <SectionDialog<FormValues>
@@ -111,38 +112,87 @@ export const SkillsDialog = () => {
                   <BadgeInput {...field} setPendingKeyword={setPendingKeyword} />
                 </FormControl>
                 <FormDescription>
-                  {t`You can add multiple keywords by separating them with a comma or pressing enter.`}
+                  {t`You can add multiple keywords by separating them with a comma or pressing enter. Drag to reorder keywords.`}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
 
               <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
-                <AnimatePresence>
-                  {field.value.map((item, index) => (
-                    <motion.div
-                      key={item}
-                      layout
-                      initial={{ opacity: 0, y: -50 }}
-                      animate={{ opacity: 1, y: 0, transition: { delay: index * 0.1 } }}
-                      exit={{ opacity: 0, x: -50 }}
-                    >
-                      <Badge
-                        className="cursor-pointer"
-                        onClick={() => {
-                          field.onChange(field.value.filter((v) => item !== v));
+                <Reorder.Group
+                  axis="x"
+                  values={field.value}
+                  className="flex flex-wrap items-center gap-x-2 gap-y-3"
+                  onReorder={(newOrder) => {
+                    field.onChange(newOrder);
+                  }}
+                >
+                  <AnimatePresence>
+                    {field.value.map((item) => (
+                      <SkillBadge
+                        key={item}
+                        item={item}
+                        isDragging={draggedItem === item}
+                        setDraggedItem={setDraggedItem}
+                        onRemove={() => {
+                          if (draggedItem !== item) {
+                            field.onChange(field.value.filter((v) => item !== v));
+                          }
                         }}
-                      >
-                        <span className="mr-1">{item}</span>
-                        <X size={12} weight="bold" />
-                      </Badge>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                      />
+                    ))}
+                  </AnimatePresence>
+                </Reorder.Group>
               </div>
             </div>
           )}
         />
       </div>
     </SectionDialog>
+  );
+};
+
+type SkillBadgeProps = {
+  item: string;
+  onRemove: () => void;
+  isDragging: boolean;
+  setDraggedItem: (item: string | null) => void;
+};
+
+const SkillBadge = ({ item, onRemove, isDragging, setDraggedItem }: SkillBadgeProps) => {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={item}
+      dragControls={dragControls}
+      dragListener={false}
+      whileDrag={{ scale: 1.05 }}
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="touch-none"
+      onDragStart={() => {
+        setDraggedItem(item);
+      }}
+      onDragEnd={() => {
+        setDraggedItem(null);
+      }}
+    >
+      <Badge
+        className={`cursor-grab ${isDragging ? "ring-2 ring-primary" : ""}`}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          dragControls.start(e);
+        }}
+        onClick={(e) => {
+          if (!isDragging) {
+            onRemove();
+          }
+        }}
+      >
+        <span className="mr-1">{item}</span>
+        <X size={12} weight="bold" className="cursor-pointer" />
+      </Badge>
+    </Reorder.Item>
   );
 };
