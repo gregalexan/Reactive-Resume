@@ -45,6 +45,13 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    setupFiles: ['./src/setupTests.ts'],
+    deps: {
+      inline: [
+        '@testing-library/jest-dom',
+        '@lingui/macro'
+      ]
+    }
   },
 
   resolve: {
